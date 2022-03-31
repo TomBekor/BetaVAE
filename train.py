@@ -5,22 +5,25 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from CelebADataSet import CelebADataSet
+from DSpritesDataSet import DSpritesDataSet
+from ButterflyDataSet import ButterflyDataSet
+from ChairsDataSet import ChairsDataSet
 import random
 import numpy as np
 from tqdm import tqdm
 import math
 from datetime import datetime
 import os
+from FlowerDataSet import FlowerDataSet
 
 from model import *
 
 def reconstruction_loss(original_img, reconstructions, distribution):
     batch_size = original_img.size(0)
-    if distribution == 'benoulli':
-        recon_loss =F.binary_cross_entropy(reconstructions,
-                                            original_img,
-                                            reduction='sum')
-
+    if distribution == 'bernoulli':
+        recon_loss = F.binary_cross_entropy_with_logits(reconstructions,
+                                                        original_img,
+                                                        reduction='sum').div(batch_size)
     elif distribution == 'gaussian':
         recon_loss = F.mse_loss(reconstructions * 255,
                                 original_img * 255,
@@ -40,23 +43,52 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
 
+    # dataset name:
+    # dataset_name = 'CelebA'
+    dataset_name = 'Chairs'
+    # dataset_name = 'Butterfly'
+
     # TODO Normalize transform
-    transform = transforms.Compose(
-                [transforms.ToTensor(),
-                transforms.Resize((64, 64))
-                ]) # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    if dataset_name == 'CelebA' or dataset_name == 'Flower' or dataset_name == "Chairs":
+        transform = transforms.Compose(
+                    [transforms.ToTensor(),
+                    transforms.Resize((64, 64))
+                    ]) # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    elif dataset_name == 'DSprites':
+        transform = transforms.Compose([])
+    elif dataset_name == 'Butterfly':
+        transform = transforms.Compose(
+                    [transforms.ToTensor(),
+                    transforms.Resize((64, 64))
+                    ]) # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    else:
+        transform = transforms.Compose([])
 
     # config:
-    num_epochs = 20
+    num_epochs = 10
     batch_size = 64
     trainset_percentage = 0.8
     betas = [1, 5, 25, 50, 100, 250, 500]
+
+    # CelebA betas done: 1, 5, 25, 50
+    # DSprites betas done: 1, 5
 
     # progress bar
     pb_len = 75
 
     # Load dataset
-    dataset = CelebADataSet(root_path='datasets/CelebA', transform=transform)
+    if dataset_name == 'CelebA':
+        dataset = CelebADataSet(root_path='datasets/CelebA', transform=transform)
+    elif dataset_name == 'Flower':
+        dataset = FlowerDataSet(root_path='datasets/flower_data', transform=transform)
+    elif dataset_name == 'Chairs':
+        dataset = ChairsDataSet(root_path='datasets/rendered_chairs', transform=transform)
+    elif dataset_name == 'DSprites':
+        dataset = DSpritesDataSet()
+    elif dataset_name == 'Butterfly':
+        dataset = ButterflyDataSet(root_path = 'datasets/butterfly', transform=transform)
+    else:
+        dataset = None
 
     # Train-Test split
     dataset_size = len(dataset)
@@ -76,16 +108,47 @@ def main():
     # Set device
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+
     for beta in betas:
         print(f'\n#------ Beta={beta} ------#')
-        model_dir = f'models/CelebA/beta_{beta}/'
-        # Model creation
-        model = CNNBetaVAE(latent_dim=32, in_channels=3)
+        model_dir = f'models/{dataset_name}/beta_{beta}/'
+
+        # Model initialization
+        if dataset_name == 'CelebA'or dataset_name == 'Flower' or dataset_name == 'Chairs':
+            model = CNNBetaVAE(latent_dim=32, in_channels=3)
+        elif dataset_name == 'Butterfly':
+            model = CNNBetaVAE(latent_dim=32, in_channels=3)
+        elif dataset_name == 'DSprites':
+            model = FCBetaVAE(latent_dim=10, input_dim=4096)
+        else:
+            model = None
         model = model.to(device)
 
         # Optimizer
-        optimizer = optim.Adam(model.parameters(), lr=1e-4)
-        
+        if dataset_name == 'CelebA' or dataset_name == 'Flower'or dataset_name == 'Chairs':
+            optimizer = optim.Adam(model.parameters(), lr=1e-4)
+        elif dataset_name == 'Butterfly':
+            optimizer = optim.Adagrad(model.parameters(), lr=1e-2)
+        elif dataset_name == 'DSprites':
+            optimizer = optim.Adagrad(model.parameters(), lr=1e-2)
+        else:
+            optimizer = None
+
+        # Loss KL-distribution
+        if dataset_name == 'CelebA':
+            distribution='gaussian'
+        elif dataset_name == 'Chairs':
+            distribution='gaussian'
+        elif dataset_name == 'Butterfly':
+            distribution='gaussian'
+        elif dataset_name == 'Flower':
+            distribution='gaussian'
+        elif dataset_name == 'DSprites':
+            distribution='bernoulli'
+        else:
+            distribution = None
+
+        # Training loop
         losses = []
         for epoch in range(num_epochs):  # loop over the dataset multiple times
             t1 = datetime.now()
@@ -104,7 +167,7 @@ def main():
                 outputs, mu, log_var = model(images)
 
                 # Loss calculation
-                loss = reconstruction_loss(original_img=images, reconstructions=outputs, distribution='gaussian') \
+                loss = reconstruction_loss(original_img=images, reconstructions=outputs, distribution=distribution) \
                         + beta * kl_divergence_loss(mu, log_var)
 
                 # backward
@@ -120,17 +183,15 @@ def main():
                 t2 = datetime.now()
                 time_diff = str(t2 - t1)[2:-4]
                 bars=min(math.ceil(current_batch/num_batches*pb_len), pb_len-1)
-                print(f'\r[{"="*bars}>{" "*(pb_len-bars-1)}] epoch: {epoch+1} | loss: {loss.item()} | time: {time_diff}', end='')
+                print(f'\r[{"="*bars}>{" "*(pb_len-bars-1)}] epoch: {epoch+1} | time: {time_diff} | loss: {loss.item()}', end='')
             print()
             # save model:
             os.makedirs(model_dir, exist_ok=True)
             model_save_path = f'{model_dir}epoch_{epoch+1}.pth'
             torch.save(model.state_dict(), model_save_path)  
+            np.save(f'{model_dir}loss_values.npy', losses)
 
-        np.save(f'{model_dir}loss_values.npy', losses)
         print('Finished Training')
-
-    
 
 
 if __name__ == '__main__':
