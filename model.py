@@ -61,24 +61,32 @@ class CNNBetaVAE(nn.Module):
         x_rec = self.decoder(z)
         return x_rec, mu, log_var
 
+    def encode(self, x):
+        outs = self.encoder(x)
+        mu = outs[:,:self.latent_dim]
+        log_var = outs[:,self.latent_dim:]
+        size = log_var.shape
+        z = reparam(mu, log_var, size)
+        return z, mu, log_var
+
 
 class FCBetaVAE(nn.Module):
     def __init__(self, latent_dim=10, input_dim=4096):
-        super(FCBetaVAE).__init__()
+        super(FCBetaVAE, self).__init__()
         self.latent_dim = latent_dim
         self.encoder = nn.Sequential(
+            nn.Flatten(),
             nn.Linear(input_dim, 1200),
             nn.ReLU(True),
-            nn.Linear(1200, self.latent_dim*2),
-            nn.ReLU(True),
+            nn.Linear(1200, self.latent_dim*2)
         )
         self.decoder = nn.Sequential(
             nn.Linear(self.latent_dim, 1200),
-            nn.Tanh(True),
+            nn.Tanh(),
             nn.Linear(1200, 1200),
-            nn.Tanh(True),
+            nn.Tanh(),
             nn.Linear(1200, 1200),
-            nn.Tanh(True),
+            nn.Tanh(),
             nn.Linear(1200, 4096)
         )
 
@@ -89,5 +97,22 @@ class FCBetaVAE(nn.Module):
         size = log_var.shape
         z = reparam(mu, log_var, size)
         x_rec = self.decoder(z)
+        x_rec = x_rec.view(-1, 1, 64, 64)
         return x_rec, mu, log_var
+
+    def encode(self, x):
+        outs = self.encoder(x)
+        mu = outs[:,:self.latent_dim]
+        log_var = outs[:,self.latent_dim:]
+        size = log_var.shape
+        z = reparam(mu, log_var, size)
+        return z, mu, log_var
+
+class LinearClassifier(nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super(LinearClassifier, self).__init__()
+        self.linear = nn.Linear(input_dim, output_dim)
+    
+    def forward(self, x):
+        return self.linear(x)
 
