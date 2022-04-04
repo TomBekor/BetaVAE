@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from CelebADataSet import CelebADataSet
 from DSpritesDataSet import DSpritesDataSet
-from ButterflyDataSet import ButterflyDataSet
+from FERGDataSet import FERGDataSet
 from ChairsDataSet import ChairsDataSet
 import random
 import numpy as np
@@ -25,9 +25,11 @@ def reconstruction_loss(original_img, reconstructions, distribution):
                                                         original_img,
                                                         reduction='sum').div(batch_size)
     elif distribution == 'gaussian':
-        recon_loss = F.mse_loss(reconstructions * 255,
-                                original_img * 255,
-                                reduction="sum") / 255
+        recon_sig = F.sigmoid(reconstructions)
+        recon_loss = F.mse_loss(recon_sig, original_img, reduction='sum').div(batch_size)
+        # recon_loss = F.mse_loss(reconstructions * 255,
+        #                         original_img * 255,
+        #                         reduction="sum") / 255
     else:
         recon_loss = None
     return recon_loss
@@ -45,22 +47,17 @@ def main():
 
     # dataset name:
     # dataset_name = 'CelebA'
-    dataset_name = 'Chairs'
-    # dataset_name = 'Butterfly'
+    # dataset_name = 'DSprites'
+    dataset_name = 'Faces2'
 
     # TODO Normalize transform
-    if dataset_name == 'CelebA' or dataset_name == 'Flower' or dataset_name == "Chairs":
+    if dataset_name == 'CelebA' or dataset_name == 'Flower' or dataset_name == "Chairs" or dataset_name == 'FERG':
         transform = transforms.Compose(
                     [transforms.ToTensor(),
                     transforms.Resize((64, 64))
                     ]) # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     elif dataset_name == 'DSprites':
         transform = transforms.Compose([])
-    elif dataset_name == 'Butterfly':
-        transform = transforms.Compose(
-                    [transforms.ToTensor(),
-                    transforms.Resize((64, 64))
-                    ]) # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     else:
         transform = transforms.Compose([])
 
@@ -85,8 +82,8 @@ def main():
         dataset = ChairsDataSet(root_path='datasets/rendered_chairs', transform=transform)
     elif dataset_name == 'DSprites':
         dataset = DSpritesDataSet()
-    elif dataset_name == 'Butterfly':
-        dataset = ButterflyDataSet(root_path = 'datasets/butterfly', transform=transform)
+    elif dataset_name == 'FERG':
+        dataset =  FERGDataSet(transform=transform)
     else:
         dataset = None
 
@@ -116,7 +113,7 @@ def main():
         # Model initialization
         if dataset_name == 'CelebA'or dataset_name == 'Flower' or dataset_name == 'Chairs':
             model = CNNBetaVAE(latent_dim=32, in_channels=3)
-        elif dataset_name == 'Butterfly':
+        elif dataset_name == 'FERG':
             model = CNNBetaVAE(latent_dim=32, in_channels=3)
         elif dataset_name == 'DSprites':
             model = FCBetaVAE(latent_dim=10, input_dim=4096)
@@ -127,7 +124,7 @@ def main():
         # Optimizer
         if dataset_name == 'CelebA' or dataset_name == 'Flower'or dataset_name == 'Chairs':
             optimizer = optim.Adam(model.parameters(), lr=1e-4)
-        elif dataset_name == 'Butterfly':
+        elif dataset_name == 'FERG':
             optimizer = optim.Adagrad(model.parameters(), lr=1e-2)
         elif dataset_name == 'DSprites':
             optimizer = optim.Adagrad(model.parameters(), lr=1e-2)
@@ -138,8 +135,8 @@ def main():
         if dataset_name == 'CelebA':
             distribution='gaussian'
         elif dataset_name == 'Chairs':
-            distribution='gaussian'
-        elif dataset_name == 'Butterfly':
+            distribution='bernoulli'
+        elif dataset_name == 'FERG':
             distribution='gaussian'
         elif dataset_name == 'Flower':
             distribution='gaussian'

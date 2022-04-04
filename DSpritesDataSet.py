@@ -60,6 +60,7 @@ class DSpritesDataSet(Dataset):
                                            5.79986336, 5.96097068, 6.12207799, 6.28318531]),
                   'shape': np.array([1., 2., 3.]),
                   'color': np.array([1.])}
+                
 
     def __init__(self, root='datasets/dsprites/'):
         super().__init__()
@@ -105,7 +106,8 @@ class DSpritesDataSet(Dataset):
         sample = self.transforms(sample)
 
         lat_value = self.lat_values[idx]
-        return sample, lat_value
+        
+        return sample, lat_value[2]
 
     def images_from_data_gen(self, sample_size, y, y_lat):
         """

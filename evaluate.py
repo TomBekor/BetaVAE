@@ -13,13 +13,15 @@ import math
 from datetime import datetime
 
 
-def main():
-    model_path = 'models/DSprites/beta_250/epoch_7.pth'
-
+def disentanglement_metric_score(model_path, method='Beta-VAE', dataset_size=1000, L=64, num_epochs=1000, verbose=False):
     dsprites_dataset = DSpritesDataSet()
-    disentanglement_dataset = DisentanglementDataSet(dsprites_dataset=dsprites_dataset, dataset_size=1000, L=64, model_path=model_path)
+    
+    if verbose:
+        print('Creating DisentanglementDataSet... ', end='')
+    disentanglement_dataset = DisentanglementDataSet(dsprites_dataset=dsprites_dataset, method=method, dataset_size=dataset_size, L=L, model_path=model_path)
+    if verbose:
+        print('Done.')
 
-    num_epochs = 1000
     batch_size = 64
     trainset_percentage = 0.8
 
@@ -39,8 +41,7 @@ def main():
                             shuffle=False)
 
     # Set device
-    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     model = LinearClassifier(input_dim=10, output_dim=5).to(device)
 
@@ -87,8 +88,10 @@ def main():
             t2 = datetime.now()
             time_diff = str(t2 - t1)[2:-4]
             bars=min(math.ceil(current_batch/num_batches*pb_len), pb_len-1)
-            print(f'\r[{"="*bars}>{" "*(pb_len-bars-1)}] epoch: {epoch+1} | time: {time_diff} | loss: {loss.item()}', end='')
-        print()
+            if verbose:
+                print(f'\r[{"="*bars}>{" "*(pb_len-bars-1)}] epoch: {epoch+1} | time: {time_diff} | loss: {loss.item()}', end='')
+        if verbose:
+            print()
 
         # calc accuracy
         correct = 0
@@ -102,9 +105,7 @@ def main():
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
         epoch_accs.append(round(100 * correct / total, 2))
-    print('Finished Training')
-    print(f'Dinsentangle Metric Score: {epoch_accs[-1]}%')
-
-
-if __name__ == '__main__':
-    main()
+    if verbose:
+        print('Finished Training')
+        print(f'Dinsentangle Metric Score: {epoch_accs[-1]}%')
+    return epoch_accs[-1]

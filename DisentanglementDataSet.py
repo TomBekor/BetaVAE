@@ -7,9 +7,10 @@ import math
 from model import FCBetaVAE
 
 class DisentanglementDataSet(Dataset):
-    def __init__(self, dsprites_dataset, dataset_size=1000, L=64, model_path='models/DSprites/beta_1/epoch_7.pth'):
+    def __init__(self, dsprites_dataset, method='Beta-VAE', dataset_size=1000, L=64, model_path='models/DSprites/beta_1/epoch_7.pth'):
         self.L = L
         self.dsprites_dataset = dsprites_dataset
+
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.generating_factors = {
             0: ('Shape', np.array([0,1,2])),
