@@ -5,7 +5,11 @@ models
 test.py
 TODO
 drafts
-*.ipynb
 latents
 labels
 embedding
+latent_space.ipynb
+dsprites.ipynb
+celebA.ipynb
+plots.ipynb
+embedded
