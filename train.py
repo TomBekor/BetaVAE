@@ -48,10 +48,10 @@ def main():
     # dataset name:
     # dataset_name = 'CelebA'
     # dataset_name = 'DSprites'
-    dataset_name = 'Faces2'
+    dataset_name = 'FERG'
 
     # TODO Normalize transform
-    if dataset_name == 'CelebA' or dataset_name == 'Flower' or dataset_name == "Chairs" or dataset_name == 'FERG':
+    if dataset_name == 'CelebA' or dataset_name == "Chairs" or dataset_name == 'FERG':
         transform = transforms.Compose(
                     [transforms.ToTensor(),
                     transforms.Resize((64, 64))
@@ -76,8 +76,6 @@ def main():
     # Load dataset
     if dataset_name == 'CelebA':
         dataset = CelebADataSet(root_path='datasets/CelebA', transform=transform)
-    elif dataset_name == 'Flower':
-        dataset = FlowerDataSet(root_path='datasets/flower_data', transform=transform)
     elif dataset_name == 'Chairs':
         dataset = ChairsDataSet(root_path='datasets/rendered_chairs', transform=transform)
     elif dataset_name == 'DSprites':
@@ -137,8 +135,6 @@ def main():
         elif dataset_name == 'Chairs':
             distribution='bernoulli'
         elif dataset_name == 'FERG':
-            distribution='gaussian'
-        elif dataset_name == 'Flower':
             distribution='gaussian'
         elif dataset_name == 'DSprites':
             distribution='bernoulli'
