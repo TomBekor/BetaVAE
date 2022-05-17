@@ -2,6 +2,8 @@
 
 ![CelebA_Reconstructions](https://github.com/TomBekor/BetaVAE/blob/master/figures/CelebA_reconstructions.png)
 
+Official paper: [beta-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework](https://openreview.net/forum?id=Sy2fzU9gl)
+
 This repository's main notebook is `results.ipynb`.
 
 Links to download the datasets:
